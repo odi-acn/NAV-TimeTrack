@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NAVISITE Time Logger</title>
+<style>
+:root {
+  --bg:#f0f2f5; --surface:#fff; --surface2:#f7f8fa;
+  --border:#e2e6ea; --border2:#c8cdd4;
+  --text:#1a1f27; --text2:#5a6272; --muted:#8e97a8;
+  --accent:#0057b8; --accent-l:#e8f0fb; --accent-d:#003d8a;
+  --green:#1a7f4b; --green-l:#e6f7ef;
+  --red:#c0392b; --red-l:#fdf0ee;
+  --amber:#8a5a00; --amber-l:#fff8e6;
+  --r:10px; --rs:6px;
+  --shadow:0 1px 4px rgba(0,0,0,.07),0 0 0 .5px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* Layout */
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+@media(max-width:680px){.shell{grid-template-columns:1fr}}
+
+/* Sidebar */
+.side{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{padding:18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-icon svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.brand-name{font-size:13px;font-weight:600;color:var(--text)}
+.brand-sub{font-size:11px;color:var(--muted)}
+.nav{padding:10px 8px;flex:1}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:8px 8px 4px}
+.nav-btn{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rs);border:none;background:none;width:100%;text-align:left;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;margin-bottom:1px}
+.nav-btn:hover{background:var(--bg);color:var(--text)}
+.nav-btn.on{background:var(--accent-l);color:var(--accent-d)}
+.nav-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.week-box{margin:10px 8px 16px;background:var(--accent-l);border-radius:var(--rs);padding:12px}
+.week-box-lbl{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.week-box-dates{font-size:12px;color:var(--accent-d);margin-top:2px}
+.week-box-hrs{font-size:28px;font-weight:700;color:var(--accent-d);line-height:1;margin-top:6px}
+.week-box-hrs span{font-size:12px;font-weight:400;color:var(--accent)}
+
+/* Main */
+.main{padding:28px 30px;overflow-y:auto}
+@media(max-width:680px){.main{padding:16px}}
+.page{display:none}.page.on{display:block}
+.ph{margin-bottom:20px}
+.ph h1{font-size:19px;font-weight:600}
+.ph p{font-size:13px;color:var(--text2);margin-top:3px}
+
+/* Card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card-hd{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.card-hd svg{width:14px;height:14px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Task grid */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:4px}
+.tc{border:1.5px solid var(--border);border-radius:var(--rs);padding:10px 12px;cursor:pointer;background:var(--surface2);transition:border-color .12s,background .12s}
+.tc:hover,.tc.on{border-color:var(--accent);background:var(--accent-l)}
+.tc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.tc-id{font-size:10px;font-weight:600;color:var(--muted);font-family:monospace}
+.tc.on .tc-id{color:var(--accent)}
+.tc-name{font-size:13px;font-weight:500;color:var(--text);line-height:1.3}
+.tc.on .tc-name{color:var(--accent-d)}
+.dot{width:7px;height:7px;border-radius:50%}
+.d-pto{background:#e74c3c}.d-meet{background:#2ecc71}.d-train{background:#3498db}
+.d-mon{background:#9b59b6}.d-queue{background:#f39c12}.d-custom{background:#7f8c8d}
+.tc-add{border:1.5px dashed var(--border2);border-radius:var(--rs);padding:10px 12px;cursor:pointer;background:none;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:13px;font-family:inherit;transition:border-color .12s,color .12s}
+.tc-add:hover{border-color:var(--accent);color:var(--accent)}
+.tc-add svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
+
+/* Work type pills */
+.pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px}
+.pill{border:1.5px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;background:var(--surface2);color:var(--text2);transition:all .12s;white-space:nowrap}
+.pill:hover{border-color:var(--border2);color:var(--text)}
+.pill.on{border-color:var(--accent);background:var(--accent-l);color:var(--accent-d)}
+
+/* Form */
+.frow{display:grid;gap:12px;margin-bottom:12px}
+.f2{grid-template-columns:1fr 1fr}
+.f3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:580px){.f2,.f3{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;font-weight:500;color:var(--text2)}
+input[type=date],input[type=number],input[type=text],select,textarea{border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-size:14px;color:var(--text);background:var(--surface2);font-family:inherit;width:100%;transition:border-color .13s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px rgba(0,87,184,.08)}
+textarea{resize:vertical;min-height:64px}
+.ferr{font-size:11px;color:var(--red);margin-top:3px;display:none}
+.ferr.on{display:block}
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* Buttons */
+.btn{border:none;border-radius:var(--rs);padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px;transition:all .13s}
+.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover:not(:disabled){background:var(--accent-d)}
+.btn-p:disabled{opacity:.45;cursor:not-allowed}
+.btn-g{background:var(--surface2);border:1px solid var(--border);color:var(--text2)}.btn-g:hover{border-color:var(--border2);color:var(--text)}
+.btn-d{background:var(--red-l);border:1px solid #f5b7b1;color:var(--red)}.btn-d:hover{background:#fbe0dd}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px}
+
+/* Messages */
+.msg{border-radius:var(--rs);padding:10px 14px;font-size:13px;display:none;align-items:flex-start;gap:9px;margin-top:12px}
+.msg.on{display:flex}
+.msg svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0;margin-top:1px}
+.msg-ok{background:var(--green-l);color:var(--green);border:1px solid #a3d9c0}
+.msg-err{background:var(--red-l);color:var(--red);border:1px solid #f5b7b1}
+.msg-warn{background:var(--amber-l);color:var(--amber);border:1px solid #f0d090}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--surface2)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.b-sent{background:var(--green-l);color:var(--green)}
+.b-draft{background:var(--amber-l);color:var(--amber)}
+.b-fail{background:var(--red-l);color:var(--red)}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px}
+
+/* Stats */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+@media(max-width:580px){.sgrid{grid-template-columns:1fr 1fr}}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.sc-val{font-size:24px;font-weight:700;line-height:1}
+.sc-lbl{font-size:11px;color:var(--muted);margin-top:4px;font-weight:500}
+
+/* Modal */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.backdrop.on{display:flex}
+.modal{background:var(--surface);border-radius:var(--r);padding:24px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-hd{font-size:15px;font-weight:600;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.modal-x{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;padding:2px}
+.modal-x:hover{color:var(--text)}
+
+/* Settings */
+.srow{display:flex;justify-content:space-between;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--border);gap:16px}
+.srow:last-child{border-bottom:none}
+.sinfo strong{font-size:13px;font-weight:500;display:block}
+.sinfo span{font-size:12px;color:var(--muted);margin-top:2px;display:block}
+.srow input[type=text]{width:210px}
+
+/* Export preview */
+.expre{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:12px;font-family:monospace;font-size:11px;white-space:pre;overflow-x:auto;max-height:220px;overflow-y:auto;color:var(--text2);margin:12px 0;line-height:1.6}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+#toast{position:fixed;bottom:24px;right:24px;background:#1a1f27;color:#fff;padding:10px 18px;border-radius:var(--rs);font-size:13px;z-index:999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="side">
+  <div class="brand">
+    <div class="brand-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div><div class="brand-name">NAVISITE Time</div><div class="brand-sub">Monitoring team</div></div>
+  </div>
+  <div class="nav">
+    <div class="nav-section">Log</div>
+    <button class="nav-btn on" onclick="go('log')" id="nb-log">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Log time
+    </button>
+    <button class="nav-btn" onclick="go('week')" id="nb-week">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>This week
+    </button>
+    <div class="nav-section">Export</div>
+    <button class="nav-btn" onclick="go('export')" id="nb-export">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export &amp; push to SN
+    </button>
+    <div class="nav-section">Config</div>
+    <button class="nav-btn" onclick="go('tasks')" id="nb-tasks">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Tasks
+    </button>
+    <button class="nav-btn" onclick="go('settings')" id="nb-settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings
+    </button>
+  </div>
+  <div class="week-box">
+    <div class="week-box-lbl">This week</div>
+    <div class="week-box-dates" id="sbDates">—</div>
+    <div class="week-box-hrs" id="sbHrs">0h <span>logged</span></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- LOG TIME -->
+  <div class="page on" id="page-log">
+    <div class="ph"><h1>Log time</h1><p>Pick a task, select your work type, add hours and save.</p></div>
+
+    <div class="card">
+      <div class="card-hd"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Task</div>
+      <div class="tgrid" id="taskGrid"></div>
+      <div class="ferr" id="errTask">Select a task.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h7"/></svg>Work type</div>
+      <div class="pills" id="pillGrid"></div>
+      <div class="ferr" id="errPill">Select a work type.</div>
+      <div class="divider"></div>
+      <div class="frow f3">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="fDate">
+          <div class="ferr" id="errDate">Select a date.</div>
+        </div>
+        <div class="field">
+          <label>Hours</label>
+          <input type="number" id="fHours" min="0.5" max="24" step="0.5" placeholder="e.g. 2">
+          <div class="ferr" id="errHours">Enter hours.</div>
+        </div>
+        <div class="field">
+          <label>Your name</label>
+          <input type="text" id="fName" placeholder="e.g. Odi">
+        </div>
+      </div>
+      <div class="field">
+        <label>Comments</label>
+        <textarea id="fComment" placeholder="e.g. ZCU certification exam, CheckMK gap analysis, INC3923999 review"></textarea>
+      </div>
+      <div class="msg msg-ok" id="msgOk"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg><span id="msgOkTxt"></span></div>
+      <div class="msg msg-err" id="msgErr"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="msgErrTxt"></span></div>
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="saveEntry()" id="btnSave">
+          <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Save entry
+        </button>
+        <button class="btn btn-g" onclick="resetForm()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THIS WEEK -->
+  <div class="page" id="page-week">
+    <div class="ph"><h1>This week</h1><p>All entries logged. Push to ServiceNow when ready.</p></div>
+    <div class="sgrid" id="stats"></div>
+    <div class="card" style="padding:0;overflow:hidden"><div id="weekTable"></div></div>
+  </div>
+
+  <!-- EXPORT & PUSH -->
+  <div class="page" id="page-export">
+    <div class="ph"><h1>Export &amp; push to ServiceNow</h1><p>Download your log as Excel/CSV, or submit draft entries directly to ServiceNow.</p></div>
+
+    <div class="card">
+      <div class="card-hd"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download your log</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Save a copy of all your entries to your computer. Opens in Excel. This is your personal backup -- keep it wherever you like.</p>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn btn-p" onclick="exportCSV('week')">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Download this week (CSV)
+        </button>
+        <button class="btn btn-g" onclick="exportCSV('all')">Download all entries (CSV)</button>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">CSV opens directly in Excel. Save it to your desktop or OneDrive as your personal record.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>Push to ServiceNow</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Submits all <strong>draft</strong> entries for this week to ServiceNow. Do this midweek and again on Friday.</p>
+      <div id="pushPreview"></div>
+      <div class="msg msg-ok" id="pushOk"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg><span id="pushOkTxt"></span></div>
+      <div class="msg msg-err" id="pushErr"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="pushErrTxt"></span></div>
+      <div class="msg msg-warn" id="pushWarn"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg><span id="pushWarnTxt"></span></div>
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="pushToSN()" id="btnPush">
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Push draft entries to ServiceNow
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>Manual paste (fallback)</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:8px">If the push button fails due to network or CORS, copy this and paste it into the ServiceNow comment field for each task.</p>
+      <div class="expre" id="manualText">No draft entries this week.</div>
+      <button class="btn btn-g btn-sm" onclick="copyManual()">Copy to clipboard</button>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="page" id="page-tasks">
+    <div class="ph"><h1>Tasks</h1><p>Mario's weekly SCTASK list. Edit IDs if they change, or add new tasks.</p></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="taskManage"></div>
+      <div style="padding:14px 18px;border-top:1px solid var(--border)">
+        <button class="btn btn-p btn-sm" onclick="openModal()">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add task
+        </button>
+      </div>
+    </div>
+    <div class="msg msg-warn on" style="margin-top:4px">
+      <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <span>Task IDs come from Mario's weekly SSC list. Update them here if they change week to week.</span>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="ph"><h1>Settings</h1><p>ServiceNow connection and your profile.</p></div>
+    <div class="card">
+      <div class="card-hd"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>ServiceNow</div>
+      <div class="srow">
+        <div class="sinfo"><strong>Instance URL</strong><span>Pre-filled with NAVISITE instance</span></div>
+        <input type="text" id="sUrl" placeholder="https://navisite.service-now.com">
+      </div>
+      <div class="srow">
+        <div class="sinfo"><strong>API token</strong><span>Leave blank to use SSO session (recommended)</span></div>
+        <input type="text" id="sToken" placeholder="Leave blank for SSO">
+      </div>
+      <div class="srow">
+        <div class="sinfo"><strong>Your name</strong><span>Pre-fills name on the log form</span></div>
+        <input type="text" id="sName" placeholder="e.g. Odi">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="saveSettings()">Save</button>
+        <button class="btn btn-g" onclick="testSN()">Test connection</button>
+      </div>
+      <div class="msg" id="snTestMsg" style="margin-top:10px">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        <span id="snTestTxt"></span>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- TASK MODAL -->
+<div class="backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-hd"><span id="modalTitle">Add task</span><button class="modal-x" onclick="closeModal()">&#215;</button></div>
+    <div class="frow f2" style="margin-bottom:12px">
+      <div class="field">
+        <label>SCTASK number</label>
+        <input type="text" id="mId" placeholder="e.g. SCTASK1216885">
+        <div class="ferr" id="mIdErr">Required.</div>
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <select id="mCat">
+          <option value="PTO">PTO</option>
+          <option value="Internal Meetings">Internal meetings</option>
+          <option value="Training">Training</option>
+          <option value="Monitoring Solution Development">Monitoring solution dev</option>
+          <option value="Queue Monitoring">Queue monitoring</option>
+          <option value="Custom">Other / custom</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Task name</label>
+      <input type="text" id="mName" placeholder="e.g. EBS monitoring prep">
+      <div class="ferr" id="mNameErr">Required.</div>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Description (optional)</label>
+      <textarea id="mDesc" style="min-height:48px" placeholder="What this task covers"></textarea>
+    </div>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn btn-p" onclick="saveTask()" id="mSaveBtn">Add task</button>
+      <button class="btn btn-g" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const CAT = {
+  'PTO':                            {dot:'d-pto',   label:'PTO'},
+  'Internal Meetings':              {dot:'d-meet',  label:'Meetings'},
+  'Training':                       {dot:'d-train', label:'Training'},
+  'Monitoring Solution Development':{dot:'d-mon',   label:'Solution dev'},
+  'Queue Monitoring':               {dot:'d-queue', label:'Queue'},
+  'Custom':                         {dot:'d-custom',label:'Custom'},
+};
+
+const WORK_TYPES = {
+  'PTO':                            ['PTO','Sick leave','Personal day'],
+  'Internal Meetings':              ['Team meeting','KT session','Handoff call','Customer sync','Onboarding session'],
+  'Training':                       ['Training','Certification','Self-study','Onboarding'],
+  'Monitoring Solution Development':['Solution development','Gap analysis','CheckMK analysis','EBS monitoring','Infinity Edge prep','Documentation'],
+  'Queue Monitoring':               ['Queue monitoring','Ticket triage','Backlog review','INC investigation'],
+  'Custom':                         ['Meeting','Training','Development','Review','Other'],
+};
+
+const DEFAULT_TASKS = [
+  {id:'SCTASK1216880',name:'PTO',                             category:'PTO',                             desc:'Personal time off, sick leave'},
+  {id:'SCTASK1216881',name:'Internal meetings & handoffs',    category:'Internal Meetings',               desc:'Team meetings, KT, handoff calls'},
+  {id:'SCTASK1216882',name:'Training',                        category:'Training',                        desc:'Zabbix training, certifications, onboarding'},
+  {id:'SCTASK1216883',name:'Monitoring solution development', category:'Monitoring Solution Development',  desc:'CheckMK gap, EBS, Infinity Edge work'},
+  {id:'SCTASK1216884',name:'Queue monitoring & backlog',      category:'Queue Monitoring',                desc:'Queue watching, triage, backlog review'},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let tasks=[], entries=[], cfg={};
+let selTask=null, selPill=null, editIdx=null;
+
+function load(){
+  try{cfg=JSON.parse(localStorage.getItem('nv_cfg')||'{}')}catch{cfg={}}
+  try{tasks=JSON.parse(localStorage.getItem('nv_tasks')||'null')||[...DEFAULT_TASKS]}catch{tasks=[...DEFAULT_TASKS]}
+  try{entries=JSON.parse(localStorage.getItem('nv_entries')||'[]')}catch{entries=[]}
+}
+function save(){
+  localStorage.setItem('nv_cfg',JSON.stringify(cfg));
+  localStorage.setItem('nv_tasks',JSON.stringify(tasks));
+  localStorage.setItem('nv_entries',JSON.stringify(entries));
+}
+
+// ── WEEK HELPERS ──────────────────────────────────────────────────────────────
+function weekBounds(){
+  const n=new Date(), d=n.getDay(), diff=n.getDate()-d+(d===0?-6:1);
+  const mon=new Date(n); mon.setDate(diff); mon.setHours(0,0,0,0);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  return{mon,sun};
+}
+function fmt(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
+function fmtFull(d){return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function weekEs(){const{mon,sun}=weekBounds();return entries.filter(e=>{const d=new Date(e.date+'T00:00:00');return d>=mon&&d<=sun})}
+function draftEs(){return weekEs().filter(e=>e.status==='draft')}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function go(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.getElementById('nb-'+p).classList.add('on');
+  if(p==='week')renderWeek();
+  if(p==='export')renderExport();
+  if(p==='tasks')renderTasks();
+  if(p==='settings')loadSettings();
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+function updateSidebar(){
+  const{mon,sun}=weekBounds();
+  document.getElementById('sbDates').textContent=fmt(mon)+' – '+fmt(sun);
+  const h=weekEs().reduce((s,e)=>s+e.hours,0);
+  document.getElementById('sbHrs').innerHTML=`${h}h <span>logged</span>`;
+}
+
+// ── TASK GRID ─────────────────────────────────────────────────────────────────
+function renderTaskGrid(){
+  document.getElementById('taskGrid').innerHTML=
+    tasks.map(t=>`
+      <div class="tc ${selTask===t.id?'on':''}" onclick="pickTask('${t.id}')">
+        <div class="tc-top"><span class="tc-id">${t.id}</span><span class="dot ${(CAT[t.category]||CAT.Custom).dot}"></span></div>
+        <div class="tc-name">${t.name}</div>
+      </div>`).join('')+
+    `<button class="tc-add" onclick="go('tasks')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add task</button>`;
+}
+
+function pickTask(id){
+  selTask=id; selPill=null;
+  document.getElementById('errTask').classList.remove('on');
+  renderTaskGrid();
+  const t=tasks.find(x=>x.id===id);
+  renderPills(t?t.category:'Custom');
+}
+
+// ── PILLS ─────────────────────────────────────────────────────────────────────
+function renderPills(cat){
+  const opts=WORK_TYPES[cat]||WORK_TYPES.Custom;
+  document.getElementById('pillGrid').innerHTML=
+    opts.map(w=>`<div class="pill ${selPill===w?'on':''}" onclick="pickPill('${w}')">${w}</div>`).join('');
+}
+
+function pickPill(w){
+  selPill=w;
+  document.getElementById('errPill').classList.remove('on');
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.textContent===w));
+}
+
+// ── SAVE ENTRY ────────────────────────────────────────────────────────────────
+function validate(){
+  let ok=true;
+  if(!selTask){document.getElementById('errTask').classList.add('on');ok=false}
+  if(!selPill){document.getElementById('errPill').classList.add('on');ok=false}
+  if(!document.getElementById('fDate').value){document.getElementById('errDate').classList.add('on');ok=false}
+  const h=parseFloat(document.getElementById('fHours').value);
+  if(!h||h<=0){document.getElementById('errHours').classList.add('on');ok=false}
+  return ok;
+}
+
+function saveEntry(){
+  clearMsgs();
+  if(!validate())return;
+  const t=tasks.find(x=>x.id===selTask);
+  entries.push({
+    id:Date.now(),
+    date:document.getElementById('fDate').value,
+    hours:Math.ceil(parseFloat(document.getElementById('fHours').value)*2)/2,
+    task:selTask,
+    taskName:t?.name||selTask,
+    category:t?.category||'Custom',
+    workType:selPill,
+    comment:document.getElementById('fComment').value.trim(),
+    submittedBy:document.getElementById('fName').value.trim()||cfg.name||'Team member',
+    status:'draft',
+    savedAt:new Date().toISOString()
+  });
+  save(); updateSidebar();
+  showMsg('msgOk','Entry saved. Log more or go to Export & push when ready.');
+  // keep task selected, reset hours/comment for quick next entry
+  document.getElementById('fHours').value='';
+  document.getElementById('fComment').value='';
+  selPill=null;
+  renderPills(t?.category||'Custom');
+}
+
+function resetForm(){
+  selTask=null;selPill=null;
+  document.getElementById('fHours').value='';
+  document.getElementById('fComment').value='';
+  document.getElementById('fDate').value=todayISO();
+  clearMsgs(); renderTaskGrid(); renderPills('Custom');
+}
+
+// ── THIS WEEK ─────────────────────────────────────────────────────────────────
+function renderWeek(){
+  const we=weekEs();
+  const total=we.reduce((s,e)=>s+e.hours,0);
+  const sent=we.filter(e=>e.status==='sent').length;
+  const draft=we.filter(e=>e.status==='draft').length;
+  const days=new Set(we.map(e=>e.date)).size;
+  document.getElementById('stats').innerHTML=`
+    <div class="sc"><div class="sc-val">${total}h</div><div class="sc-lbl">Total logged</div></div>
+    <div class="sc"><div class="sc-val">${sent}</div><div class="sc-lbl">Pushed to SN</div></div>
+    <div class="sc"><div class="sc-val">${draft}</div><div class="sc-lbl">Draft (not pushed)</div></div>
+    <div class="sc"><div class="sc-val">${days}</div><div class="sc-lbl">Days covered</div></div>`;
+  if(!we.length){document.getElementById('weekTable').innerHTML='<div class="empty">No entries this week yet.</div>';return}
+  const sorted=we.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('weekTable').innerHTML=`
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Task</th><th>Work type</th><th>Hrs</th><th>Comment</th><th>Status</th><th></th></tr></thead>
+      <tbody>${sorted.map(e=>{
+        const m=CAT[e.category]||CAT.Custom;
+        return`<tr>
+          <td style="white-space:nowrap;color:var(--text2);font-size:12px">${fmtFull(e.date)}</td>
+          <td><div style="display:flex;align-items:center;gap:6px"><span class="dot ${m.dot}" style="flex-shrink:0"></span><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.taskName}">${e.taskName}</span></div></td>
+          <td style="font-size:12px;color:var(--text2);white-space:nowrap">${e.workType||'—'}</td>
+          <td style="font-weight:600;font-variant-numeric:tabular-nums">${e.hours}h</td>
+          <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.comment||''}">${e.comment||'—'}</td>
+          <td><span class="badge ${e.status==='sent'?'b-sent':e.status==='fail'?'b-fail':'b-draft'}">${e.status==='sent'?'✓ Pushed':e.status==='fail'?'Failed':'Draft'}</span></td>
+          <td style="white-space:nowrap">
+            ${e.status!=='sent'?`<button class="btn btn-g btn-sm" onclick="retrySingle(${e.id})">Push</button>`:''}
+            <button class="btn btn-d btn-sm" style="margin-left:4px" onclick="delEntry(${e.id})">Delete</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+function delEntry(id){entries=entries.filter(e=>e.id!==id);save();renderWeek();updateSidebar()}
+
+// ── EXPORT PAGE ───────────────────────────────────────────────────────────────
+function renderExport(){
+  // push preview
+  const drafts=draftEs();
+  if(!drafts.length){
+    document.getElementById('pushPreview').innerHTML='<p style="font-size:13px;color:var(--muted);margin-bottom:12px">No draft entries to push this week. All entries have been submitted or none logged yet.</p>';
+  } else {
+    document.getElementById('pushPreview').innerHTML=`
+      <p style="font-size:13px;color:var(--text2);margin-bottom:10px">${drafts.length} draft entr${drafts.length===1?'y':'ies'} ready to push (${drafts.reduce((s,e)=>s+e.hours,0)}h total).</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px">${drafts.map(e=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:5px 10px;font-size:12px">
+          <span style="font-weight:600">${e.hours}h</span> &nbsp;${e.workType} &nbsp;<span style="color:var(--muted)">${fmtFull(e.date)}</span>
+        </div>`).join('')}</div>`;
+  }
+  // manual paste text
+  const{mon,sun}=weekBounds();
+  if(!drafts.length){document.getElementById('manualText').textContent='No draft entries this week.';return}
+  let txt=`NAVISITE Monitoring -- Time Log\nWeek: ${fmt(mon)} – ${fmt(sun)}\nService Category: Customer Management | Service Offering: Non-Billable\n\n`;
+  txt+=`${'Date'.padEnd(14)}${'Task ID'.padEnd(16)}${'Work type'.padEnd(28)}${'Hrs'.padEnd(6)}Comment\n`;
+  txt+='─'.repeat(80)+'\n';
+  drafts.forEach(e=>{txt+=`${fmtFull(e.date).padEnd(14)}${e.task.padEnd(16)}${(e.workType||'').padEnd(28)}${String(e.hours+'h').padEnd(6)}${e.comment||''}\n`});
+  txt+='─'.repeat(80)+'\n';
+  txt+=`${'TOTAL'.padEnd(56)}${drafts.reduce((s,e)=>s+e.hours,0)}h`;
+  document.getElementById('manualText').textContent=txt;
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportCSV(scope){
+  const data=scope==='week'?weekEs():entries;
+  if(!data.length){toast('No entries to export');return}
+  const rows=[['Date','Task ID','Task name','Category','Work type','Hours','Comment','Submitted by','Status','Saved at','SN Sys ID']];
+  data.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+    rows.push([e.date,e.task,e.taskName,e.category,e.workType,e.hours,e.comment||'',e.submittedBy,e.status,e.savedAt,e.snSysId||'']);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const{mon}=weekBounds();
+  const fname=scope==='week'?`time-log-week-${mon.toISOString().slice(0,10)}.csv`:'time-log-all.csv';
+  dl(fname,'data:text/csv;charset=utf-8,'+encodeURIComponent(csv));
+  toast('Downloaded: '+fname);
+}
+
+function dl(name,href){const a=document.createElement('a');a.href=href;a.download=name;a.click()}
+
+function copyManual(){
+  navigator.clipboard.writeText(document.getElementById('manualText').textContent).then(()=>toast('Copied to clipboard'));
+}
+
+// ── PUSH TO SN ────────────────────────────────────────────────────────────────
+async function pushToSN(){
+  const drafts=draftEs();
+  if(!drafts.length){showPushMsg('warn','No draft entries to push this week.');return}
+  clearPushMsgs();
+  const btn=document.getElementById('btnPush');
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div> Pushing…';
+  const url=(cfg.url||'https://navisite.service-now.com').replace(/\/$/,'');
+  const tok=cfg.token||'';
+  const hdrs={'Content-Type':'application/json','Accept':'application/json'};
+  if(tok)hdrs['Authorization']=tok.startsWith('Bearer')?tok:'Basic '+btoa(tok);
+  let ok=0,fail=0;
+  for(const e of drafts){
+    try{
+      const res=await fetch(`${url}/api/now/table/task_time_worked?sysparm_input_display_value=true`,{
+        method:'POST',headers:hdrs,credentials:'include',
+        body:JSON.stringify({task:e.task,time_worked:String(e.hours),work_type:e.workType,work_date:e.date,comments:e.comment||`${e.workType} — ${e.submittedBy}`,service_category:'Customer Management',service_offering:'Non-Billable'})
+      });
+      if(res.ok){const d=await res.json();e.status='sent';e.snSysId=d?.result?.sys_id||'';ok++}
+      else{e.status='fail';fail++}
+    }catch{e.status='fail';fail++}
+  }
+  save();updateSidebar();renderExport();
+  btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg> Push draft entries to ServiceNow';
+  if(ok&&!fail)showPushMsg('ok',`${ok} entr${ok===1?'y':'ies'} pushed successfully to ServiceNow.`);
+  else if(ok&&fail)showPushMsg('warn',`${ok} pushed, ${fail} failed. Check your SN connection and retry failed entries from This week.`);
+  else showPushMsg('err','Push failed. Check Settings > ServiceNow connection, or use the manual paste below.');
+}
+
+async function retrySingle(id){
+  const e=entries.find(x=>x.id===id);if(!e)return;
+  const url=(cfg.url||'https://navisite.service-now.com').replace(/\/$/,'');
+  const tok=cfg.token||'';
+  const hdrs={'Content-Type':'application/json','Accept':'application/json'};
+  if(tok)hdrs['Authorization']=tok.startsWith('Bearer')?tok:'Basic '+btoa(tok);
+  try{
+    const res=await fetch(`${url}/api/now/table/task_time_worked?sysparm_input_display_value=true`,{method:'POST',headers:hdrs,credentials:'include',body:JSON.stringify({task:e.task,time_worked:String(e.hours),work_type:e.workType,work_date:e.date,comments:e.comment||`${e.workType} — ${e.submittedBy}`,service_category:'Customer Management',service_offering:'Non-Billable'})});
+    if(res.ok){const d=await res.json();e.status='sent';e.snSysId=d?.result?.sys_id||'';save();renderWeek();toast('Pushed to SN')}
+    else toast('Push failed — check Settings');
+  }catch{toast('Could not reach ServiceNow')}
+}
+
+// ── TASKS PAGE ────────────────────────────────────────────────────────────────
+function renderTasks(){
+  document.getElementById('taskManage').innerHTML=!tasks.length?'<div class="empty">No tasks. Add one below.</div>':`
+    <table class="tbl">
+      <thead><tr><th>SCTASK</th><th>Name</th><th>Category</th><th>Description</th><th></th></tr></thead>
+      <tbody>${tasks.map((t,i)=>{
+        const m=CAT[t.category]||CAT.Custom;
+        return`<tr>
+          <td style="font-family:monospace;font-size:12px;color:var(--text2)">${t.id}</td>
+          <td style="font-weight:500">${t.name}</td>
+          <td><div style="display:flex;align-items:center;gap:6px"><span class="dot ${m.dot}"></span><span style="font-size:12px">${m.label}</span></div></td>
+          <td style="font-size:12px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc||''}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-g btn-sm" onclick="openEditModal(${i})">Edit</button>
+            <button class="btn btn-d btn-sm" style="margin-left:4px" onclick="removeTask(${i})">Remove</button>
+          </td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+function removeTask(i){if(!confirm(`Remove "${tasks[i].name}"?`))return;tasks.splice(i,1);save();renderTasks();renderTaskGrid();toast('Task removed')}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function openModal(){editIdx=null;document.getElementById('modalTitle').textContent='Add task';document.getElementById('mSaveBtn').textContent='Add task';document.getElementById('mId').value='';document.getElementById('mName').value='';document.getElementById('mDesc').value='';document.getElementById('mCat').value='Training';['mIdErr','mNameErr'].forEach(x=>document.getElementById(x).classList.remove('on'));document.getElementById('modal').classList.add('on')}
+function openEditModal(i){editIdx=i;const t=tasks[i];document.getElementById('modalTitle').textContent='Edit task';document.getElementById('mSaveBtn').textContent='Save';document.getElementById('mId').value=t.id;document.getElementById('mName').value=t.name;document.getElementById('mDesc').value=t.desc||'';document.getElementById('mCat').value=t.category in CAT?t.category:'Custom';['mIdErr','mNameErr'].forEach(x=>document.getElementById(x).classList.remove('on'));document.getElementById('modal').classList.add('on')}
+function closeModal(){document.getElementById('modal').classList.remove('on')}
+function saveTask(){
+  const id=document.getElementById('mId').value.trim(),name=document.getElementById('mName').value.trim();
+  let ok=true;
+  if(!id){document.getElementById('mIdErr').classList.add('on');ok=false}
+  if(!name){document.getElementById('mNameErr').classList.add('on');ok=false}
+  if(!ok)return;
+  const t={id,name,category:document.getElementById('mCat').value,desc:document.getElementById('mDesc').value.trim()};
+  if(editIdx!==null)tasks[editIdx]=t;else tasks.push(t);
+  save();closeModal();renderTasks();renderTaskGrid();toast(editIdx!==null?'Task updated':'Task added');editIdx=null;
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+function loadSettings(){document.getElementById('sUrl').value=cfg.url||'https://navisite.service-now.com';document.getElementById('sToken').value=cfg.token||'';document.getElementById('sName').value=cfg.name||''}
+function saveSettings(){cfg.url=document.getElementById('sUrl').value.trim();cfg.token=document.getElementById('sToken').value.trim();cfg.name=document.getElementById('sName').value.trim();save();document.getElementById('fName').value=cfg.name;toast('Settings saved')}
+async function testSN(){
+  const url=(document.getElementById('sUrl').value||'https://navisite.service-now.com').trim();
+  const tok=document.getElementById('sToken').value.trim();
+  const el=document.getElementById('snTestMsg');const etxt=document.getElementById('snTestTxt');
+  el.className='msg msg-warn on';etxt.textContent='Testing…';
+  const hdrs={'Accept':'application/json'};if(tok)hdrs['Authorization']=tok.startsWith('Bearer')?tok:'Basic '+btoa(tok);
+  try{
+    const r=await fetch(`${url}/api/now/table/sys_user?sysparm_limit=1&sysparm_fields=name`,{headers:hdrs,credentials:'include'});
+    if(r.ok){el.className='msg msg-ok on';etxt.textContent='Connected to '+url}
+    else if(r.status===401){el.className='msg msg-err on';etxt.textContent='Auth failed. Log into ServiceNow in another tab (SSO) or check your token.'}
+    else{el.className='msg msg-err on';etxt.textContent=`HTTP ${r.status} — check the URL.`}
+  }catch{el.className='msg msg-warn on';etxt.textContent='Could not reach SN. Check URL and VPN.'}
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function clearMsgs(){['msgOk','msgErr','errTask','errPill','errDate','errHours'].forEach(x=>document.getElementById(x).classList.remove('on'))}
+function showMsg(id,txt){const el=document.getElementById(id);el.classList.add('on');const sp=el.querySelector('span');if(sp)sp.textContent=txt}
+function clearPushMsgs(){['pushOk','pushErr','pushWarn'].forEach(x=>document.getElementById(x).classList.remove('on'))}
+function showPushMsg(t,txt){const m={ok:'pushOk',err:'pushErr',warn:'pushWarn'};showMsg(m[t],txt);const sp=document.getElementById(m[t]).querySelector('span');if(sp)sp.textContent=txt}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500)}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+load();
+document.getElementById('fDate').value=todayISO();
+document.getElementById('fName').value=cfg.name||'';
+renderTaskGrid();renderPills('Custom');updateSidebar();
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal()});
+</script>
+</body>
+</html>
